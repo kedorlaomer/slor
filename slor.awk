@@ -85,7 +85,7 @@ BEGIN {
 }
 
 function helpAndExit() {
-    print "Usage: awk slor.awk BASE=<directory> SOURCE=<url>";
+    print "Usage: awk slor.awk -v BASE=<directory> -v SOURCE=<url>";
     print "Downloads the images and stylesheets from SOURCE and stores them to BASE";
     exit 2;
 }
