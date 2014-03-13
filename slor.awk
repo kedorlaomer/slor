@@ -12,6 +12,11 @@ BEGIN {
 
     # slurp everything into content
     RS = "";
+    content = "";
+    while ((getline tmp) > 0) {
+        content = content "\n\n" tmp;
+    }
+
     getline content;
 
     # process content
@@ -63,8 +68,9 @@ BEGIN {
                     # also skip content of bad tags
                     skipTo(iliteral("</" tagname ">"));
                 } else { # good tag
-                    # TODO: process <img href=...> and <style ref="...>
+                    # TODO: process <img href=...> and <style href="...>
                     # TODO: don't get confused by internal CSS
+                    # TODO: remove on* attributes like onLoad
                     printf "%s", "<" tagname;
                     printf "%s", skipTo(endOfTag());
                 }
@@ -215,7 +221,7 @@ function init(                          tmp, i) {
         BAD_TAGS[tmp[i]] = 1;
     }
 
-    NDEBUG = 0;
+    NDEBUG = 1;
 }
 
 function min2(a, b) {
