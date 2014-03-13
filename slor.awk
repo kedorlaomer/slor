@@ -50,7 +50,7 @@ BEGIN {
                 if (!isBadTag(tagname)) {
                     printf "%s", "</" tagname ">";
                 }
-            } else if (isSpace(ch)) { # followed by space -> unescaped
+            } else if (!isAlnum(ch)) { # followed by something not like a tag name -> unescaped
                 skipTo(literal("<"));
                 printf "&lt;";
             } else { # now it has to be an opening tag (or we will be upset)
@@ -60,7 +60,8 @@ BEGIN {
 
                 if (isBadTag(tagname)) {
                     skipTo(endOfTag());
-                    # TODO: also skip content of bad tags
+                    # also skip content of bad tags
+                    skipTo(iliteral("</" tagname ">"));
                 } else { # good tag
                     # TODO: process <img href=...> and <style ref="...>
                     # TODO: don't get confused by internal CSS
@@ -69,6 +70,7 @@ BEGIN {
                 }
             }
         } else { # literal text
+            debugPrint("literal text...");
             printf "%s%", skipBefore(literal("<"));
             if (index(content, "<") == 0)
                 exit 0;
@@ -84,7 +86,7 @@ function helpAndExit() {
 
 function debugPrint(str) {
     if (NDEBUG == 0) {
-        print "\x1B[34m " str " \x1B[39m\n";
+        print "\x1B[34m " str " \x1B[39m";
         system("sleep 1");
     }
 }
@@ -147,7 +149,7 @@ function endOfTag(              pos, nextPos) {
         } else if (ch == "<") {         # comment
             pos = 3+index1(nextPos+1, content, "-->");
         } else if (ch == ">") {         # end
-            return 1+pos;
+            return 1+nextPos;
         } else {
             print "endOfTag: *** this shouldn't happen...";
             exit 1;
@@ -185,6 +187,11 @@ function literal(str) {
     return length(str) + index(content, str);
 }
 
+# returns the index past the first occurrence of str in content disregarding case
+function iliteral(str) {
+    return length(str) + index(tolower(content), tolower(str));
+}
+
 # skips to pos; returns the skipped part
 function skipTo(pos,            rv) {
     rv = substr(content, 1, pos-1);
@@ -193,7 +200,7 @@ function skipTo(pos,            rv) {
 }
 
 function skipBefore(pos) {
-    skipTo(pos-1);
+    return skipTo(pos-1);
 }
 
 # set certain (constant?!) variables
