@@ -69,7 +69,7 @@ BEGIN {
                 }
             }
         } else { # literal text
-            printf "%s%", skipTo(literal("<"));
+            printf "%s%", skipBefore(literal("<"));
             if (index(content, "<") == 0)
                 exit 0;
         }
@@ -190,6 +190,10 @@ function skipTo(pos,            rv) {
     rv = substr(content, 1, pos-1);
     content = substr(content, pos);
     return rv;
+}
+
+function skipBefore(pos) {
+    skipTo(pos-1);
 }
 
 # set certain (constant?!) variables
