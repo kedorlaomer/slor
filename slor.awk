@@ -8,6 +8,10 @@ BEGIN {
     if (SOURCE ~! /\/$/)
         SOURCE = SOURCE "/";
 
+    # ensure SOURCE starts with a protocol
+    if (SOURCE !~ /^\w+:\/\//)
+        SOURCE = "http://" SOURCE;
+
     debugPrint("will use BASE=" BASE ", SOURCE=" SOURCE);
 
     # slurp everything into content
