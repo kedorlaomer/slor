@@ -129,7 +129,7 @@ function helpAndExit() {
 function debugPrint(str) {
     if (NDEBUG == 0) {
         print "\x1B[34m " str " \x1B[39m";
-        system("sleep 0.5");
+        system("sleep 0.1");
     }
 }
 
@@ -286,7 +286,8 @@ function makeRelative(url,          localName) {
     url = makeAbsolute(url);
     debugPrint("scheduled for download: " url);
     localName = BASE "/temp_" DOWNLOAD_INDEX;
-    DOWNLOAD = DOWNLOAD " -o " localName " " url;
+    # this may fail if url contains a quote '
+    DOWNLOAD = DOWNLOAD " -o " localName " '" url "'";
     DOWNLOAD_INDEX++;
     return localName;
 }
