@@ -5,7 +5,7 @@ BEGIN {
         helpAndExit();
 
     # ensure SOURCE ends with /
-    if (substr(SOURCE, length(SOURCE)-1, 1) != "/")
+    if (SOURCE ~! /\/$/)
         SOURCE = SOURCE "/";
 
     debugPrint("will use BASE=" BASE ", SOURCE=" SOURCE);
@@ -60,7 +60,7 @@ BEGIN {
                 printf "&lt;";
             } else { # now it has to be an opening tag (or we will be upset)
                 skipTo(literal("<")); # next character starts the tag name
-                tagname = skipTo(tagName());
+                tagname = tolower(skipTo(tagName()));
                 debugPrint("opening tag " tagname "; is it bad? " isBadTag(tagname));
 
                 if (isBadTag(tagname)) {
@@ -68,20 +68,56 @@ BEGIN {
                     # also skip content of bad tags
                     skipTo(iliteral("</" tagname ">"));
                 } else { # good tag
-                    # TODO: process <img href=...> and <style href="...>
-                    # TODO: don't get confused by internal CSS
-                    # TODO: remove on* attributes like onLoad
                     printf "%s", "<" tagname;
-                    printf "%s", skipTo(endOfTag());
+                    skipTo(nonSpace());
+                    #printf "%s", skipTo(nonSpace());
+                    while (substr(content, 1, 1) != ">" && substr(content, 1, 2) != "/>") {
+                        attribute = tolower(skipTo(tagName())); # attributes look like tag names
+                        debugPrint("found attribute '" attribute "'");
+                        skipTo(nonSpace());
+                        if (substr(content, 1, 1) == "=") {
+                            skipTo(literal("="));
+                            skipTo(nonSpace());
+                            value = unquoteAttributeValue(skipTo(attributeValue()));
+                            debugPrint("found value " value);
+                            skipTo(nonSpace());
+                        } else {
+                            value = "";
+                        }
+
+                        # attribute is JavaScript iff it starts
+                        # with "on"
+                        if (substr(attribute, 1, 2) != "on")
+                        {
+                            # attribute is an URL
+                            if (NEEDS_CHANGE[tagname] == attribute) {
+                                if (tagname == "a") {
+                                    value = makeAbsolute(value);
+                                } else {
+                                    value = makeRelative(value);
+                                }
+                            }
+
+                            printf " %s=%s", attribute, quoteAttributeValue(value);
+                        }
+                    }
+
+                    # end of tag
+                    if (substr(content, 1, 2) == "/>")
+                        printf " %s", skipTo(literal("/>"));
+                    else
+                        printf "%s", skipTo(literal(">"));
                 }
             }
         } else { # literal text
             debugPrint("literal text...");
             printf "%s%", skipBefore(literal("<"));
             if (index(content, "<") == 0)
-                exit 0;
+                break;
         }
     }
+
+    doDownloads();
 }
 
 function helpAndExit() {
@@ -93,7 +129,7 @@ function helpAndExit() {
 function debugPrint(str) {
     if (NDEBUG == 0) {
         print "\x1B[34m " str " \x1B[39m";
-        system("sleep 1");
+        system("sleep 0.5");
     }
 }
 
@@ -137,13 +173,48 @@ function isAlnum(ch) {
     return index(ALPHABET, tolower(ch)) > 0 || index(DIGITS, ch) > 0;
 }
 
+# parses an attribute, which may be
+#
+# * a single word without spaces
+# * enclosed in "..."
+# * or enclosed in '...'
+#
+# and returns the index after the attribute
+function attributeValue(        ch) {
+    ch = substr(content, 1, 1);
+    if (ch == "\"" || ch == "'")
+        return index1(2, content, ch)+1;
+    else
+        return space();
+}
+
+function unquoteAttributeValue(value,       ch1, ch2) {
+    ch1 = substr(value, 1, 1);
+    ch2 = substr(value, length(value), 1);
+    if (ch1 == ch2 && (ch1 == "\"" || ch1 == "'"))
+        return substr(value, 2, length(value)-2); # quoted
+    else
+        return value;                             # not quoted
+}
+
+# attribute values might be enclosed in "..." or '...', so they
+# aren't allowed to contain both; returns the value quoted in a
+# legal way
+function quoteAttributeValue(value) {
+    if (index(value, "\"") == 0) {
+        return "\"" value "\"";
+    }
+
+    return "'" value "'";
+}
+
 function endOfTag(              pos, nextPos) {
     pos = 1;
     while (1) {
         nextPos = min(index1(pos, content, "\""),     # attribute with "
                       index1(pos, content, "\'"),     # attribute with '
                       index1(pos, content, ">"),      # end of tag
-                      index1(pos, content, "<!--"));  # comment
+                      index1(pos, content, "<!--"));  # comment; is this actually possible?
 
         ch = substr(content, nextPos, 1);
 
@@ -179,13 +250,52 @@ function tagName(               ch, pos) {
 
     while (1) {
         ch = substr(content, pos, 1);
-        if (isAlnum(ch))
+        if (isAlnum(ch) || ch == "-" || ch == "_")
             pos++;
         else
             break;
     }
 
     return pos;
+}
+
+# interpret url relative to SOURCE
+function makeAbsolute(url) {
+    if (match(url, "^\\w+://")) {
+        debugPrint("protocol URL " url);
+        return url;
+    }
+
+    if (match(url, "^//")) {
+        debugPrint("implicit http URL " url);
+        return "http:" url;
+    }
+
+    if (match(url, "^/")) {
+        debugPrint("semi-absolute URL " url " with prefix " PREFIX);
+        return PREFIX url;
+    }
+
+    debugPrint("relative URL " url);
+    return SOURCE "/" url;
+}
+
+
+# TODO: complete
+function makeRelative(url,          localName) {
+    url = makeAbsolute(url);
+    debugPrint("scheduled for download: " url);
+    localName = BASE "/temp_" DOWNLOAD_INDEX;
+    DOWNLOAD = DOWNLOAD " -o " localName " " url;
+    DOWNLOAD_INDEX++;
+    return localName;
+}
+
+# TODO: complete
+function doDownloads() {
+    system("rm -rf " BASE);
+    system("mkdir " BASE);
+    system(DOWNLOAD);
 }
 
 # returns the index past the first occurrence of str in content
@@ -211,15 +321,30 @@ function skipBefore(pos) {
 
 # set certain (constant?!) variables
 function init(                          tmp, i) {
-    split("script applet object iframe embed", tmp, " ");
     SPACE = " \t\r\n\v\f";
     ALPHABET = "abcdefghijklmnopqrstuvwxyz";
     DIGITS = "0123456789";
     INFINITY = 1073741823; # 2**30-1 is infinite enough
 
+    match(SOURCE, "^\\w+://[^/]+");
+    PREFIX = substr(SOURCE, RSTART, RSTART+RLENGTH-1); # http://www.foo.com without the rest
+
+    split("script applet object iframe embed", tmp, " ");
+
+    # we skip these tags
     for (i in tmp) {
         BAD_TAGS[tmp[i]] = 1;
     }
+
+    # if a tag has a certain value, we may need to change this
+    # value
+    NEEDS_CHANGE["a"] = "href";
+    NEEDS_CHANGE["img"] = "src";
+    NEEDS_CHANGE["link"] = "href";
+
+    # command line for downloading things we haven't got yet
+    DOWNLOAD = "curl"
+    DOWNLOAD_INDEX = 0;
 
     NDEBUG = 1;
 }
