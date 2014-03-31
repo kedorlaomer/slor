@@ -298,8 +298,6 @@ function makeRelative(url,          localName) {
 
 # TODO: complete
 function doDownloads() {
-    system("rm -rf " BASE);
-    system("mkdir " BASE);
     system(DOWNLOAD);
 }
 
