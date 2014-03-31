@@ -4,13 +4,21 @@ BEGIN {
     if (BASE == "" || SOURCE == "")
         helpAndExit();
 
-    # ensure SOURCE ends with /
-    if (SOURCE ~! /\/$/)
-        SOURCE = SOURCE "/";
-
     # ensure SOURCE starts with a protocol
     if (SOURCE !~ /^\w+:\/\//)
         SOURCE = "http://" SOURCE;
+
+    # ensure SOURCE doesn't have a fragment
+    if (SOURCE ~ /#/)
+        SOURCE = substr(SOURCE, 1, index(SOURCE, "#")-1);
+
+    # ensure SOURCE doesn't have a query
+    if (SOURCE ~ /\?/)
+        SOURCE = substr(SOURCE, 1, index(SOURCE, "?")-1);
+
+    # ensure SOURCE ends with /
+    if (SOURCE ~! /\/$/)
+        SOURCE = SOURCE "/";
 
     debugPrint("will use BASE=" BASE ", SOURCE=" SOURCE);
 
