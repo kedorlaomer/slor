@@ -297,9 +297,9 @@ function makeAbsolute(url) {
 function makeRelative(url,          localName) {
     url = makeAbsolute(url);
     debugPrint("scheduled for download: " url);
-    localName = BASE "/temp_" DOWNLOAD_INDEX;
+    localName = "temp_" DOWNLOAD_INDEX;
     # this may fail if url contains a quote '
-    DOWNLOAD = DOWNLOAD " -o " localName " '" url "'";
+    DOWNLOAD = DOWNLOAD " -o " BASE "/" localName " '" url "'";
     DOWNLOAD_INDEX++;
     return localName;
 }
