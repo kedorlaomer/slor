@@ -348,7 +348,7 @@ function init(                          tmp, i) {
     NEEDS_CHANGE["link"] = "href";
 
     # command line for downloading things we haven't got yet
-    DOWNLOAD = "curl"
+    DOWNLOAD = "curl -gk";
     DOWNLOAD_INDEX = 0;
 
     NDEBUG = 1;

@@ -5,7 +5,7 @@ if [ "$#" -ne 1 ];  then
   exit 1
 fi
 
-curl -o tmp.html $1
+curl -gk -o tmp.html $1
 BASE=`md5sum tmp.html | awk '{print $1}'`
 cat tmp.html | awk -f slor.awk -v BASE=$BASE -v SOURCE=$1 > $BASE.html
 rm tmp.html
