@@ -46,6 +46,7 @@ BEGIN {
         # * an XML declaration
         # * a doctype declaration
         # * none of that: an unescaped <
+        # * a CDATA section
 
         if (ch == "<") {
             ch = substr(content, 2, 1);
@@ -58,6 +59,8 @@ BEGIN {
                     skipTo(literal("-->"));
                 } else if (tolower(ch) == "do") { # DTD; don't handle inline DTD
                     skipTo(literal(">"));
+                } else if (tolower(ch) == "[c") { # CDATA; skip till ]]>
+                    skipTo(literal("]]>"));
                 }
             } else if (ch == "/") { # closing tag
                 skipTo(1+length("</"));
