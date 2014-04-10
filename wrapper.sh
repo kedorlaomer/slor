@@ -5,7 +5,7 @@ if [ "$#" -ne 1 ];  then
   exit 1
 fi
 
-curl -gk -o tmp.html $1
+curl -gLk -o tmp.html $1
 BASE=`md5sum tmp.html | awk '{print $1}'`
 rm -r $BASE 2> /dev/null
 mkdir $BASE
