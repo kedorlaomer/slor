@@ -276,6 +276,10 @@ function tagName(               ch, pos) {
 
 # interpret url relative to SOURCE
 function makeAbsolute(url) {
+    # some common entities
+    gsub("&quot;", "\"", url);
+    gsub("&amp;", "\\&", url);
+
     if (match(url, "^\\w+://")) {
         debugPrint("protocol URL " url);
         return url;
