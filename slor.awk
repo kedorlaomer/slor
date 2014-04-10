@@ -1,6 +1,4 @@
 BEGIN {
-    init();
-
     if (BASE == "" || SOURCE == "")
         helpAndExit();
 
@@ -20,7 +18,9 @@ BEGIN {
     if (SOURCE ~! /\/$/)
         SOURCE = SOURCE "/";
 
-    debugPrint("will use BASE=" BASE ", SOURCE=" SOURCE);
+    init();
+
+    debugPrint("will use BASE=" BASE ", SOURCE=" SOURCE ", PREFIX=" PREFIX);
 
     # slurp everything into content
     RS = "";
@@ -296,7 +296,6 @@ function makeAbsolute(url) {
 }
 
 
-# TODO: complete
 function makeRelative(url,          localName) {
     url = makeAbsolute(url);
     debugPrint("scheduled for download: " url);
@@ -307,7 +306,6 @@ function makeRelative(url,          localName) {
     return localName;
 }
 
-# TODO: complete
 function doDownloads() {
     system(DOWNLOAD);
 }
