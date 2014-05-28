@@ -5,9 +5,10 @@ if [ "$#" -ne 1 ];  then
   exit 1
 fi
 
-curl -gLk -o tmp.html $1
+curl --compressed -gvLk -o tmp.html $1
 BASE=`md5sum tmp.html | awk '{print $1}'`
 rm -r $BASE 2> /dev/null
 mkdir $BASE
+echo $1 > $BASE/url.txt
 cat tmp.html | awk -f slor.awk -v BASE=$BASE -v SOURCE=$1 > $BASE/$BASE.html
 rm tmp.html
