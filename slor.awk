@@ -359,7 +359,7 @@ function init(                          tmp, i) {
     NEEDS_CHANGE["link"] = "href";
 
     # command line for downloading things we haven't got yet
-    DOWNLOAD = "curl -gLk";
+    DOWNLOAD = "curl --compressed -gvLk";
     DOWNLOAD_INDEX = 0;
 
     NDEBUG = 1;
