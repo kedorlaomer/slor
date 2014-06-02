@@ -16,7 +16,7 @@ BEGIN {
 
     # ensure SOURCE ends with /
     if (SOURCE ~! /\/$/)
-        SOURCE = SOURCE "/";
+        sub("[^/]+$", "", SOURCE)
 
     init();
 
@@ -295,15 +295,24 @@ function makeAbsolute(url) {
         return PREFIX url;
     }
 
-    debugPrint("relative URL " url);
-    return SOURCE "/" url;
+    debugPrint("relative URL " url "...");
+    rv = SOURCE "/" url;
+
+    needMoreSubstitutions = 1
+    while (needMoreSubstitutions) {
+        gsub("//", "/", rv); # remove unnecessary double slash, even at the beginning
+        sub(":/", "://", rv) # and repair the first substitution
+        needMoreSubstitutions = gsub("[^/]+/\\.\\.", "", rv); # replace x/../y/z by y/z
+    }
+    debugPrint("absolutized to " rv);
+    return rv;
 }
 
 
 function makeRelative(url,          localName) {
     url = makeAbsolute(url);
-    debugPrint("scheduled for download: " url);
     localName = "temp_" DOWNLOAD_INDEX;
+    debugPrint("scheduled for download: " url);
     # this may fail if url contains a quote '
     DOWNLOAD = DOWNLOAD " -o " BASE "/" localName " '" url "'";
     DOWNLOAD_INDEX++;
@@ -342,8 +351,13 @@ function init(                          tmp, i) {
     DIGITS = "0123456789";
     INFINITY = 1073741823; # 2**30-1 is infinite enough
 
-    match(SOURCE, "^\\w+://[^/]+");
-    PREFIX = substr(SOURCE, RSTART, RSTART+RLENGTH-1); # http://www.foo.com without the rest
+    # from http://foo.com/is/this/great#yeah?answer=yes make http://foo.com
+    match(SOURCE, ".+://[^/]+");
+    PREFIX = substr(SOURCE, RSTART, RSTART+RLENGTH-1);
+
+    # from http://foo.com/is/this/great make http://foo.com/is/this/
+    match(SOURCE, ".+://([^/]+/)+");
+    SOURCE = substr(SOURCE, RSTART, RSTART+RLENGTH-1);
 
     split("script applet object iframe embed", tmp, " ");
 
