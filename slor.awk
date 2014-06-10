@@ -313,7 +313,11 @@ function makeRelative(url,          localName) {
     url = makeAbsolute(url);
     localName = "temp_" DOWNLOAD_INDEX;
     debugPrint("scheduled for download: " url);
-    # this may fail if url contains a quote '
+    # correct all quotes ''' by
+    # *     finishing the quotation
+    # *     entering a quoted quotation mark \'
+    # *     beginning a new quotation
+    gsub("'", "'\\''", url);
     DOWNLOAD = DOWNLOAD " -o " BASE "/" localName " '" url "'";
     DOWNLOAD_INDEX++;
     return localName;
