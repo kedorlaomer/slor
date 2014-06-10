@@ -55,7 +55,7 @@ BEGIN {
                 skipTo(literal("?>"));
             } else if (ch == "!") { # comment or DTD
                 ch = substr(content, 3, 2);
-                if (ch == "--") { # comment
+                if (ch == "--" || ch == "! ") { # comment
                     skipTo(literal("-->"));
                 } else if (tolower(ch) == "do") { # DTD; don't handle inline DTD
                     skipTo(literal(">"));
