@@ -5,7 +5,7 @@ if [ "$#" -ne 1 ];  then
   exit 1
 fi
 
-curl --compressed -gvLk -o tmp.html $1
+curl -A 'Mozilla/5.0 (X11; Linux x86_64; rv:30.0) Gecko/20100101 Firefox/30.0' --compressed -gvLk -o tmp.html $1
 BASE=`md5sum tmp.html | awk '{print $1}'`
 rm -r $BASE 2> /dev/null
 mkdir $BASE

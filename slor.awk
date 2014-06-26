@@ -377,7 +377,7 @@ function init(                          tmp, i) {
     NEEDS_CHANGE["link"] = "href";
 
     # command line for downloading things we haven't got yet
-    DOWNLOAD = "curl --compressed -gvLk";
+    DOWNLOAD = "curl -A 'Mozilla/5.0 (X11; Linux x86_64; rv:30.0) Gecko/20100101 Firefox/30.0' --compressed -gvLk";
     DOWNLOAD_INDEX = 0;
 
     NDEBUG = 1;
