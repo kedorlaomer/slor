@@ -67,10 +67,16 @@ BEGIN {
                 tagname = skipTo(literal(">"));
                 tagname = substr(tagname, 1, length(tagname)-1);
                 debugPrint("closing tag " tagname "; is it bad? " isBadTag(tagname));
-                if (!isBadTag(tagname)) {
+                if (tagname == "style") { # filter CSS
+                    debugPrint("filtering css " substr(css, 1, 40) "...");
+                    css = filterCSS(css);
+                    printf "%s", css;
+                    printf "</style>";
+                    css = "";
+                } else if (!isBadTag(tagname)) {
                     printf "%s", "</" tagname ">";
                 }
-            } else if (!isAlnum(ch)) { # followed by something not like a tag name -> unescaped
+             } else if (!isAlnum(ch)) { # followed by something not like a tag name -> unescaped
                 skipTo(literal("<"));
                 printf "&lt;";
             } else { # now it has to be an opening tag (or we will be upset)
@@ -141,8 +147,13 @@ BEGIN {
                 }
             }
         } else { # literal text
-            debugPrint("literal text...");
-            printf "%s%", skipBefore(literal("<"));
+            debugPrint("literal text inside '" tagname "' ...");
+            theText = skipBefore(literal("<"));
+            if (tagname == "style") { # we want to filter CSS for @import url(⋯)
+                css = css theText;
+            } else {
+                printf "%s%", theText;
+            }
             if (index(content, "<") == 0)
                 break;
         }
@@ -152,7 +163,7 @@ BEGIN {
 }
 
 function helpAndExit() {
-    print "Usage: awk slor.awk -v BASE=<directory> -v SOURCE=<url>";
+    print "Usage: awk -f slor.awk -v BASE=<directory> -v SOURCE=<url>";
     print "Downloads the images and stylesheets from SOURCE and stores them to BASE";
     exit 2;
 }
@@ -160,7 +171,7 @@ function helpAndExit() {
 function debugPrint(str) {
     if (NDEBUG == 0) {
         print "\x1B[34m " str " \x1B[39m";
-        system("sleep 0.1");
+        system("sleep 0.5");
     }
 }
 
@@ -326,6 +337,11 @@ function makeAbsolute(url) {
 
 
 function makeRelative(url,          localName) {
+    if (match(url, "^data:")) { # rare special case
+        debugPrint("data URL " url " -- nothing to be done");
+        return url;
+    }
+
     url = makeAbsolute(url);
     localName = "temp_" DOWNLOAD_INDEX;
     debugPrint("scheduled for download: " url);
@@ -337,6 +353,35 @@ function makeRelative(url,          localName) {
     DOWNLOAD = DOWNLOAD " -o " BASE "/" localName " '" url "'";
     DOWNLOAD_INDEX++;
     return localName;
+}
+
+# call makeRelative on all URIs given via url(⋯)
+function filterCSS(css, base,       url, pos) {
+    FIND_URLS = "url\\([^)]*\\)";
+    while (match(css, FIND_URLS)) {
+        pos = RSTART;
+        url = substr(css, RSTART, RLENGTH);
+        debugPrint("filterCSS: found url ⟨" url "⟩")
+        sub("^url", "", url);
+        sub("^(", "", url);
+        sub("\\)$", "", url);
+        if (url ~ /^".*"$/) {
+            sub("^\"", "", url);
+            sub("\"$", "", url);
+        } else if (url ~ /^'.*'$/) {
+            sub("^'", "", url);
+            sub("'$", "", url);
+        }
+
+        url = makeRelative(url);
+        debugPrint("filterCSS: url processed to '" url "'");
+        sub(FIND_URLS, "url⟨" url "⟩", css); # later replace [] by ()
+        debugPrint("filterCSS: processing " substr(css, pos, 60) "...");
+    }
+
+    gsub("⟨", "(", css);
+    gsub("⟩", ")", css);
+    return css;
 }
 
 function doDownloads() {
@@ -397,6 +442,7 @@ function init(                          tmp, i) {
     DOWNLOAD_INDEX = 0;
 
     NDEBUG = 1;
+    css = "";
 }
 
 function min2(a, b) {
