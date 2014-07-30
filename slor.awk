@@ -85,6 +85,7 @@ BEGIN {
                 } else { # good tag
                     printf "%s", "<" tagname;
                     skipTo(nonSpace());
+                    split("", attributes);
                     #printf "%s", skipTo(nonSpace());
                     while (substr(content, 1, 1) != ">" && substr(content, 1, 2) != "/>") {
                         attribute = tolower(skipTo(tagName())); # attributes look like tag names
@@ -104,17 +105,32 @@ BEGIN {
                         # with "on"
                         if (substr(attribute, 1, 2) != "on")
                         {
-                            # attribute is an URL
-                            if (NEEDS_CHANGE[tagname] == attribute) {
-                                if (tagname == "a") {
-                                    value = makeAbsolute(value);
-                                } else {
-                                    value = makeRelative(value);
-                                }
-                            }
+                            attributes[attribute] = value;
+                        }
+                    }
 
+                    # now, print attributes and values
+                    for (attribute in attributes) {
+                        printIt = 1;
+                        value = attributes[attribute];
+                        # attribute is an URL
+                        if (NEEDS_CHANGE[tagname] == attribute) {
+                            if (tagname == "a") {
+                                value = makeAbsolute(value);
+                            } else if (tagname == "link" && attributes["rel"] == "stylesheet") {
+                                value = makeRelative(value);
+                            } else if (tagname == "link") {
+                                value = makeAbsolute(value);
+                            } else if (tagname == "img") {
+                                value = makeRelative(value);
+                            } else {
+                                printIt = 0;
+                            }
+                        }
+                        if (printIt) {
                             printf " %s=%s", attribute, quoteAttributeValue(value);
                         }
+
                     }
 
                     # end of tag
