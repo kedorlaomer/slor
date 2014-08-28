@@ -350,8 +350,11 @@ function makeRelative(url,          localName) {
     # *     entering a quoted quotation mark \'
     # *     beginning a new quotation
     gsub("'", "'\\''", url);
-    DOWNLOAD = DOWNLOAD " -o " BASE "/" localName " '" url "'";
-    DOWNLOAD_INDEX++;
+    if (!(url in ALL_DOWNLOADS)) {
+        DOWNLOAD = DOWNLOAD " -o " BASE "/" localName " '" url "'";
+        DOWNLOAD_INDEX++;
+        ALL_DOWNLOADS[url] = localName;
+    }
     return localName;
 }
 
