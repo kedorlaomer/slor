@@ -120,7 +120,7 @@ BEGIN {
                         printIt = 1;
                         value = attributes[attribute];
                         # attribute is an URL
-                        if (NEEDS_CHANGE[tagname] == attribute) {
+                        if (match(NEEDS_CHANGE[tagname], ".*" attribute)) {
                             if (tagname == "a") {
                                 value = makeAbsolute(value);
                             } else if (tagname == "link" && attributes["rel"] == "stylesheet") {
@@ -128,6 +128,10 @@ BEGIN {
                             } else if (tagname == "link") {
                                 value = makeAbsolute(value);
                             } else if (tagname == "img") {
+                                if (attributes["data-defer-src"]) {
+                                    value = attributes["data-defer-src"]
+                                    debugPrint("found data-defer-src = " value)
+                                }
                                 value = makeRelative(value);
                             } else {
                                 printIt = 0;
