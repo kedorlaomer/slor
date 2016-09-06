@@ -92,7 +92,6 @@ BEGIN {
                     printf "%s", "<" tagname;
                     skipTo(nonSpace());
                     split("", attributes);
-                    #printf "%s", skipTo(nonSpace());
                     while (substr(content, 1, 1) != ">" && substr(content, 1, 2) != "/>") {
                         attribute = tolower(skipTo(tagName())); # attributes look like tag names
                         debugPrint("found attribute '" attribute "'");
@@ -113,6 +112,11 @@ BEGIN {
                         {
                             attributes[attribute] = value;
                         }
+
+                        # need to filter inline CSS
+                        if (tolower(attribute) == "style") {
+                            attributes[attribute] = filterCSS(value);
+                        }
                     }
 
                     # now, print attributes and values
@@ -124,7 +128,9 @@ BEGIN {
                             if (tagname == "a") {
                                 value = makeAbsolute(value);
                             } else if (tagname == "link" && attributes["rel"] == "stylesheet") {
+                                remoteName = value;
                                 value = makeRelative(value);
+                                filterLater(value, remoteName);
                             } else if (tagname == "link") {
                                 value = makeAbsolute(value);
                             } else if (tagname == "img") {
@@ -363,14 +369,14 @@ function makeRelative(url,          localName) {
 }
 
 # call makeRelative on all URIs given via url(⋯)
-function filterCSS(css, base,       url, pos) {
+function filterCSS(css,        url, pos) {
     FIND_URLS = "url\\([^)]*\\)";
     while (match(css, FIND_URLS)) {
         pos = RSTART;
         url = substr(css, RSTART, RLENGTH);
         debugPrint("filterCSS: found url ⟨" url "⟩")
         sub("^url", "", url);
-        sub("^(", "", url);
+        sub("^\\(", "", url);
         sub("\\)$", "", url);
         if (url ~ /^".*"$/) {
             sub("^\"", "", url);
@@ -391,8 +397,56 @@ function filterCSS(css, base,       url, pos) {
     return css;
 }
 
+# add localName to the list of files that later need to filtered
+# via filterCSS; we need remoteName because the stylesheet might
+# use relative URLs that need to be resolved relative to
+# remoteName
+function filterLater(localName, remoteName) {
+    debugPrint("scheduled " BASE "/" localname " for later filtering");
+    if (!(localName in STYLESHEETS)) {
+        STYLESHEETS[BASE "/" localName] = remoteName;
+    }
+}
+
+# perform the filtering of filterCSS on all STYLESHEETS; not
+# recursive (if they import other stylesheets, they won't be
+# filtered)
+function doFiltering(        fname, css, line) {
+    DOWNLOAD = DOWNLOAD_PRIME; # we start another round of downloading
+    for (fname in STYLESHEETS) {
+        debugPrint("doFiltering: slurping file " fname "...")
+        css = "";
+        while (getline line < fname) {
+            css = css "\n" line;
+        }
+        debugPrint("doFiltering: slurped file " fname "...")
+
+        # for makeRelative to work
+        SOURCE = STYLESHEETS[fname];
+        match(SOURCE, ".+://[^/]+");
+        PREFIX = substr(SOURCE, RSTART, RSTART+RLENGTH-1);
+        match(SOURCE, ".+://([^/]+/)+");
+        SOURCE = substr(SOURCE, RSTART, RSTART+RLENGTH-1);
+        css = filterCSS(css);
+
+        # renaming files is needed because AWK doesn't know when to open or
+        # close files
+        system("rm " fname);
+        debugPrint("doFiltering: saving filtered css to " fname "...");
+        debugPrint("... starting with " (substr(css, 1, 80)));
+        print css > fname "-prime"; # replace old content
+        fflush(fname "-prime");
+        system("mv '" fname "'-prime '" fname "'");
+    }
+
+    debugPrint("doFiltering: starting second round of downloads...")
+    # second round of downloading
+    system(DOWNLOAD)
+}
+
 function doDownloads() {
     system(DOWNLOAD);
+    doFiltering();
 }
 
 # returns the index past the first occurrence of str in content
@@ -438,14 +492,15 @@ function init(                          tmp, i) {
         BAD_TAGS[tmp[i]] = 1;
     }
 
-    # if a tag has a certain value, we may need to change this
-    # value
+    # if a tag has a certain attribute, we may need to change
+    # its value
     NEEDS_CHANGE["a"] = "href";
     NEEDS_CHANGE["img"] = "src";
     NEEDS_CHANGE["link"] = "href";
 
     # command line for downloading things we haven't got yet
-    DOWNLOAD = "curl -A 'Mozilla/5.0 (X11; Linux x86_64; rv:30.0) Gecko/20100101 Firefox/30.0' --compressed -gvLk";
+    DOWNLOAD_PRIME = "curl -A 'Mozilla/5.0 (X11; Linux x86_64; rv:30.0) Gecko/20100101 Firefox/30.0' --compressed -gvLk";
+    DOWNLOAD = DOWNLOAD_PRIME
     DOWNLOAD_INDEX = 0;
 
     NDEBUG = 1;
